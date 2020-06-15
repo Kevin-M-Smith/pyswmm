@@ -8,7 +8,7 @@
 """Base class for a SWMM Simulation."""
 
 # Local imports
-from pyswmm.swmm5 import PySWMM
+from pyswmm.swmm5 import PySWMM, PYSWMMException
 from pyswmm.toolkitapi import SimulationTime, SimulationUnits
 
 
@@ -17,6 +17,14 @@ class Simulation(object):
     Base class for a SWMM Simulation.
 
     The model object provides several options to run a simulation.
+    User can specified SWMM library path. Uses default lib if not provided.
+
+    Initialize the Simulation class.
+
+    :param str inpfile: Name of SWMM input file (default '')
+    :param str rptfile: Report file to generate (default None)
+    :param str binfile: Optional binary output file (default None)
+    :param str swmm_lib_path: User-specified SWMM library path (default None).
 
     Examples:
 
@@ -25,7 +33,7 @@ class Simulation(object):
 
     >>> from pyswmm import Simulation
     >>>
-    >>> sim = Simulation('./TestModel1_weirSetting.inp')
+    >>> sim = Simulation('tests/data/TestModel1_weirSetting.inp')
     >>> for step in sim:
     ...     pass
     >>>
@@ -37,7 +45,7 @@ class Simulation(object):
 
     >>> from pyswmm import Simulation
     >>>
-    >>> with Simulation('./TestModel1_weirSetting.inp') as sim:
+    >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
     ...     for step in sim:
     ...         pass
     ...     sim.report()
@@ -48,15 +56,29 @@ class Simulation(object):
 
     >>> from pyswmm import Simulation
     >>>
-    >>> sim = Simulation('./TestModel1_weirSetting.inp')
+    >>> sim = Simulation('tests/data/TestModel1_weirSetting.inp')
     >>> sim.execute()
     """
 
-    def __init__(self, inputfile, reportfile=None, outputfile=None):
-        self._model = PySWMM(inputfile, reportfile, outputfile)
+    def __init__(self,
+                 inputfile,
+                 reportfile=None,
+                 outputfile=None,
+                 swmm_lib_path=None):
+        self._model = PySWMM(inputfile, reportfile, outputfile, swmm_lib_path)
         self._model.swmm_open()
+        self._isOpen = True
         self._advance_seconds = None
         self._isStarted = False
+        self._terminate_request = False
+        self._callbacks = {
+            "before_start": None,
+            "before_step": None,
+            "after_step": None,
+            "before_end": None,
+            "after_end": None,
+            "after_close": None
+        }
 
     def __enter__(self):
         """
@@ -64,7 +86,7 @@ class Simulation(object):
 
         >>> from pyswmm import Simulation
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     for step in sim:
         ...         print(sim.current_time)
         ...     sim.report()
@@ -83,6 +105,12 @@ class Simulation(object):
     def start(self):
         """Start Simulation"""
         if not self._isStarted:
+            # Set Model Initial Conditions
+            # (This Will be Deprecated with Time)
+            if hasattr(self, "_initial_conditions"):
+                self._initial_conditions()
+            # Execute Callback Hooks Before Simulation
+            self._execute_callback(self.before_start())
             self._model.swmm_start(True)
             self._isStarted = True
 
@@ -90,15 +118,21 @@ class Simulation(object):
         """Next"""
         # Start Simulation
         self.start()
-
+        # Check if simulation termination request was made
+        if self._terminate_request:
+            self._execute_callback(self.before_end())
+            raise StopIteration
+        # Execute Callback Hooks Before Simulation Step
+        self._execute_callback(self.before_step())
         # Simulation Step Amount
         if self._advance_seconds is None:
             time = self._model.swmm_step()
         else:
             time = self._model.swmm_stride(self._advance_seconds)
-
+        # Execute Callback Hooks After Simulation Step
+        self._execute_callback(self.after_step())
         if time <= 0.0:
-            self._model.swmm_end()
+            self._execute_callback(self.before_end())
             raise StopIteration
         return self._model
 
@@ -106,8 +140,193 @@ class Simulation(object):
 
     def __exit__(self, *a):
         """close"""
-        self._model.swmm_end()
-        self._model.swmm_close()
+        if self._isStarted:
+            self._model.swmm_end()
+            self._isStarted = False
+            # Execute Callback Hooks After Simulation End
+            self._execute_callback(self.after_end())
+        if self._isOpen:
+            self._model.swmm_close()
+            self._isOpen = False
+            # Execute Callback Hooks After Simulation Closes
+            self._execute_callback(self.after_close())
+
+    @staticmethod
+    def _is_callback(callable_object):
+        """Checks if arugment is a function/method."""
+        if not callable(callable_object):
+            error_msg = 'Requires Callable Object, not {}'.format(
+                type(callable_object))
+            raise (PYSWMMException(error_msg))
+        else:
+            return True
+
+    def _execute_callback(self, callback):
+        """Runs the callback."""
+        if callback:
+            try:
+                callback()
+            except PYSWMMException:
+                error_msg = "Callback Failed"
+                raise PYSWMMException((error_msg))
+
+    def initial_conditions(self, init_conditions):
+        """
+        Intial Conditions for Hydraulics and Hydrology can be set
+        from within the api by setting a function to the
+        initial_conditions property.
+
+        >>> from pyswmm import Simulation
+        >>>
+        >>> with Simulation('./TestModel1_weirSetting.inp') as sim:
+        ...     nodeJ1 = Nodes(sim)["J1"]
+        ...
+        ...     def init_conditions():
+        ...         nodeJ1.initial_depth = 4
+        ...
+        ...     sim.initial_conditions(init_conditions)
+        ...
+        ...     for step in sim:
+        ...         pass
+        ...     sim.report()
+
+        """
+        if self._is_callback(init_conditions):
+            self._initial_conditions = init_conditions
+
+    def before_start(self):
+        """Get Before Start Callback.
+
+        :return: Callbacks
+        """
+        return self._callbacks["before_start"]
+
+    def add_before_start(self, callback):
+        """
+        Add callback function/method/object to execute before
+        the simlation starts. Needs to be callable.
+
+        :param func callback: Callable Object
+
+        >>> from pyswmm import Simulation
+        >>>
+        >>> def test_callback():
+        ...     print("CALLBACK - Executed")
+        >>>
+        >>> with Simulation('./TestModel1_weirSetting.inp') as sim:
+        ...
+        ...     sim.before_start(test_callback) #<- pass function handle.
+        ...     print("Waiting to Start")
+        ...     for ind, step in enumerate(sim):
+        ...         print("Step {}".format(ind))
+        ...     print("Complete!")
+        ... print("Closed")
+        >>>
+        >>> "Waiting to Start"
+        >>> "CALLBACK - Executed"
+        >>> "Step 0"
+        >>> "Step 1"
+        >>> ...
+        >>> "Complete!"
+        >>> "Closed"
+        """
+        if self._is_callback(callback):
+            self._callbacks["before_start"] = callback
+
+    def before_step(self):
+        """Get Before Step Callback.
+
+        :return: Callbacks
+        """
+        return self._callbacks["before_step"]
+
+    def add_before_step(self, callback):
+        """
+        Add callback function/method/object to execute before
+        a simlation step. Needs to be callable.
+
+        :param func callback: Callable Object
+
+        (See self.add_before_start() for more details)
+        """
+        if self._is_callback(callback):
+            self._callbacks["before_step"] = callback
+
+    def after_step(self):
+        """Get After Step Callback.
+
+        :return: Callbacks
+        """
+        return self._callbacks["after_step"]
+
+    def add_after_step(self, callback):
+        """
+        Add callback function/method/object to execute after
+        a simlation step. Needs to be callable.
+
+        :param func callback: Callable Object
+
+        (See self.add_before_start() for more details)
+        """
+        if self._is_callback(callback):
+            self._callbacks["after_step"] = callback
+
+    def before_end(self):
+        """Get Before End Callback.
+
+        :return: Callbacks
+        """
+        return self._callbacks["before_end"]
+
+    def add_before_end(self, callback):
+        """
+        Add callback function/method/object to execute after
+        the simulation ends. Needs to be callable.
+
+        :param func callback: Callable Object
+
+        (See self.add_before_start() for more details)
+        """
+        if self._is_callback(callback):
+            self._callbacks["before_end"] = callback
+
+    def after_end(self):
+        """Get After End Callback.
+
+        :return: Callbacks
+        """
+        return self._callbacks["after_end"]
+
+    def add_after_end(self, callback):
+        """
+        Add callback function/method/object to execute after
+        the simulation ends. Needs to be callable.
+
+        :param func callback: Callable Object
+
+        (See self.add_before_start() for more details)
+        """
+        if self._is_callback(callback):
+            self._callbacks["after_end"] = callback
+
+    def after_close(self):
+        """Get After Close Callback.
+
+        :return: Callbacks
+        """
+        return self._callbacks["after_close"]
+
+    def add_after_close(self, callback):
+        """
+        Add callback function/method/object to execute after
+        the simulation is closed. Needs to be callable.
+
+        :param func callback: Callable Object
+
+        (See self.add_before_start() for more details)
+        """
+        if self._is_callback(callback):
+            self._callbacks["after_close"] = callback
 
     def step_advance(self, advance_seconds):
         """
@@ -122,7 +341,7 @@ class Simulation(object):
 
         >>> from pyswmm import Simulation
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     sim.step_advance(300)
         ...     for step in sim:
         ...         print(step.current_time)
@@ -136,6 +355,28 @@ class Simulation(object):
         """
         self._advance_seconds = advance_seconds
 
+    def terminate_simulation(self):
+        """
+        Inserts a request to stop a simulation and cleanly executing the callbacks.
+
+        Examples:
+
+        with Simulation("model") as sim:
+            nodeXYZ = Nodes(sim)["nodeZYX"]
+
+            def before_step_callback():
+                if nodeXYZ.depth > 8:
+                    sim.terminate_simulation()
+
+            # Setting Callbacks
+            sim.add_before_step(before_step_callback)
+
+            for ind, step in enumerate(sim):
+                # Now simulation will end early if the depth is > 8
+                pass
+        """
+        self._terminate_request = True
+
     def report(self):
         """
         Writes to report file after simulation.
@@ -144,7 +385,7 @@ class Simulation(object):
 
         >>> from pyswmm import Simulation
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     for step in sim:
         ...         pass
         ...     sim.report()
@@ -255,7 +496,7 @@ class Simulation(object):
 
         >>> from pyswmm import Simulation
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     print sim.start_time
         ...     sim.start_time = datetime(2015,5,10,15,15,1)
         >>>
@@ -278,7 +519,7 @@ class Simulation(object):
 
         >>> from pyswmm import Simulation
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     print sim.end_time
         ...     sim.end_time = datetime(2016,5,10,15,15,1)
         >>>
@@ -301,7 +542,7 @@ class Simulation(object):
 
         >>> from pyswmm import Simulation
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     print sim.report_start
         ...     sim.report_start = datetime(2015,5,10,15,15,1)
         >>>
@@ -328,7 +569,7 @@ class Simulation(object):
 
         >>> from pyswmm import Simulation
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     print sim.flow_units
         >>>
         >>> CFS
@@ -346,7 +587,7 @@ class Simulation(object):
 
         >>> from pyswmm import Simulation
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     print sim.system_units
         >>>
         >>> US
@@ -364,7 +605,7 @@ class Simulation(object):
 
         >>> from pyswmm import Simulation
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     for step in sim:
         ...         print(sim.current_time)
         ...     sim.report()
@@ -387,7 +628,7 @@ class Simulation(object):
 
         >>> from pyswmm import Simulation
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     for step in sim:
         ...         print(sim.percent_complete)
         ...     sim.report()

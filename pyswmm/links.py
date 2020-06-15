@@ -9,7 +9,7 @@
 
 # Local imports
 from pyswmm.swmm5 import PYSWMMException
-from pyswmm.toolkitapi import LinkParams, LinkResults, LinkType, ObjectType
+from pyswmm.toolkitapi import LinkParams, LinkResults, LinkPollut, LinkType, ObjectType
 
 
 class Links(object):
@@ -22,7 +22,7 @@ class Links(object):
 
     >>> from pyswmm import Simulation, Links
     >>>
-    >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+    >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
     ...     for link in Links(sim):
     ...         print link
     ...         print link.linkid
@@ -95,14 +95,14 @@ class Links(object):
                 _ln.__class__ = Pump
             return _ln
         else:
-            raise PYSWMMException("Link ID Does not Exist")
+            raise PYSWMMException("Link ID: {} Does not Exist".format(linkid))
 
     def __iter__(self):
         return self
 
     def __next__(self):
         if self._cuindex < self._nLinks:
-            linkobject = Link(self._model, self._linkid)
+            linkobject = self.__getitem__(self._linkid)
             self._cuindex += 1  # Next Iteration
             return linkobject
         else:
@@ -127,7 +127,7 @@ class Link(object):
 
     >>> from pyswmm import Simulation, Links
     >>>
-    >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+    >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
     ...     c1c2 = Links(sim)["C1:C2"]
     ...     print c1c2.flow
     ...     for step in simulation:
@@ -157,7 +157,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.linkid
         >>> "C1"
@@ -175,7 +175,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.is_conduit()
         >>> True
@@ -193,7 +193,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.is_pump()
         >>> False
@@ -211,7 +211,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.is_orifice()
         >>> False
@@ -229,7 +229,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.is_weir()
         >>> False
@@ -247,7 +247,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.is_outlet()
         >>> False
@@ -266,7 +266,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.connections
         >>> ("C1","C2")
@@ -285,7 +285,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.inlet_node
         >>> C1
@@ -304,7 +304,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.outlet_node
         >>> C2
@@ -323,7 +323,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.inlet_offset
         >>> 0.1
@@ -332,7 +332,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.inlet_offset
         ...     c1c2.inlet_offset = 0.2
@@ -359,7 +359,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.outlet_offset
         >>> 0.1
@@ -368,7 +368,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.outlet_offset
         ...     c1c2.outlet_offset = 0.2
@@ -395,7 +395,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.initial_flow
         >>> 0
@@ -404,7 +404,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.initial_flow
         ...     c1c2.initial_flow = 0.2
@@ -431,7 +431,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.flow_limit
         >>> 0
@@ -440,7 +440,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.flow_limit
         ...     c1c2.flow_limit = 0.2
@@ -467,7 +467,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.inlet_head_loss
         >>> 0
@@ -476,7 +476,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.inlet_head_loss
         ...     c1c2.inlet_head_loss = 0.2
@@ -505,7 +505,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.outlet_head_loss
         >>> 0
@@ -514,7 +514,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.outlet_head_loss
         ...     c1c2.outlet_head_loss = 0.2
@@ -543,7 +543,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.average_head_loss
         >>> 0
@@ -552,7 +552,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.average_head_loss
         ...     c1c2.average_head_loss = 0.2
@@ -581,7 +581,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.seepage_rate
         >>> 0
@@ -590,7 +590,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     print c1c2.seepage_rate
         ...     c1c2.seepagerate = 0.2
@@ -622,7 +622,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     for step in sim:
         ...         print c1c2.flow
@@ -650,7 +650,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     for step in sim:
         ...         print c1c2.depth
@@ -678,7 +678,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     for step in sim:
         ...         print c1c2.volume
@@ -706,7 +706,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     for step in sim:
         ...         print c1c2.froude
@@ -734,7 +734,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     for step in sim:
         ...         print c1c2.ups_xsection_area
@@ -762,7 +762,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     for step in sim:
         ...         print c1c2.ds_xsection_area
@@ -790,7 +790,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     for step in sim:
         ...         print c1c2.current_setting
@@ -818,7 +818,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     for step in sim:
         ...         print c1c2.target_setting
@@ -832,7 +832,7 @@ class Link(object):
 
         >>> from pyswmm import Simulation, Links
         >>>
-        >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+        >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
         ...     c1c2 = Links(sim)["C1:C2"]
         ...     for step in sim:
         ...         print c1c2.target_setting
@@ -857,6 +857,72 @@ class Link(object):
         """
         return self._model.setLinkSetting(self._linkid, setting)
 
+    @property
+    def pollut_quality(self):
+        """
+        Get Current Water Quality Values for a Link.
+
+        If Simulation is not running this method will raise a warning and
+        return 0.
+
+        :return: Group of Water Quality Values.
+        :rtype: dict
+
+        Examples:
+
+        >>> from pyswmm import Simulation, Links
+        >>>
+        >>> with Simulation('tests/buildup-test.inp') as sim:
+        ...     C1 = Nodes(sim)["C1"]
+        ...     for step in sim:
+        ...         print(C1.pollut_quality)
+        >>> {'test-pollutant': 0.0}
+        >>> {'test-pollutant': 120.0}
+        >>> {'test-pollutant': 120.0}
+        """
+        out_dict = {}
+        pollut_ids = self._model.getObjectIDList(ObjectType.POLLUT.value)
+        quality_array = self._model.getLinkPollut(self._linkid,
+                                                      LinkPollut.linkQual.value)
+
+        for ind in range(len(pollut_ids)):
+            out_dict[pollut_ids[ind]] = quality_array[ind]
+
+        return out_dict
+
+    @property
+    def total_loading(self):
+        """
+        Get Total Pollutant Loading Values for a Link.
+
+        If Simulation is not running this method will raise a warning and
+        return 0.
+
+        :return: Group of Total Loading Values.
+        :rtype: dict
+
+        Examples:
+
+        >>> from pyswmm import Simulation, Links
+        >>>
+        >>> with Simulation('tests/buildup-test.inp') as sim:
+        ...     C1 = Nodes(sim)["C1"]
+        ...     for step in sim:
+        ...         print(C1.total_loading)
+        >>> {'test-pollutant': 0.01}
+        >>> {'test-pollutant': 0.02}
+        >>> {'test-pollutant': 0.03}
+        """
+        out_dict = {}
+        pollut_ids = self._model.getObjectIDList(ObjectType.POLLUT.value)
+        totalLoad_array = self._model.getLinkPollut(self._linkid,
+                                                      LinkPollut.totalLoad.value)
+
+        for ind in range(len(pollut_ids)):
+            out_dict[pollut_ids[ind]] = totalLoad_array[ind]
+
+        return out_dict
+
 
 class Conduit(Link):
     """
@@ -872,39 +938,40 @@ class Conduit(Link):
         Conduit Flow Stats. The stats returned are rolling/cumulative.
         Indeces are as follows:
 
-        +---------------------------+
-        | Max Flow Rate             |
-        +---------------------------+
-        | Max Flow Date             |
-        +---------------------------+
-        | Max Velocity              |
-        +---------------------------+
-        | Max Depth                 |
-        +---------------------------+
-        | Time in Normal Flow       |
-        +---------------------------+
-        | Time in Inlet Control     |
-        +---------------------------+
-        | Time Surcharged           |
-        +---------------------------+
-        | Time Upstream Full        |
-        +---------------------------+
-        | Time Downstream Full      |
-        +---------------------------+
-        | Time Full Flow            |
-        +---------------------------+
-        | Time Capacity Limited     |
-        +---------------------------+
-        | Time in Flow Class (dict) |
-        +---------------------------+
-        | Time Courant Critical     |
-        +---------------------------+
-        | Flow Turns                |
-        +---------------------------+
-        | Flow Turn Signs           |
-        +---------------------------+
+        +-----------------------+
+        | peak_flow             |
+        +-----------------------+
+        | peak_flow_date        |
+        +-----------------------+
+        | peak_velocity         |
+        +-----------------------+
+        | peak_depth            |
+        +-----------------------+
+        | time_normal_flow      |
+        +-----------------------+
+        | time_inlet_control    |
+        +-----------------------+
+        | time_surcharged       |
+        +-----------------------+
+        | time_full_upstream    |
+        +-----------------------+
+        | time_full_downstream  |
+        +-----------------------+
+        | time_full_flow        |
+        +-----------------------+
+        | time_capacity_limited |
+        +-----------------------+
+        | time_in_flow_class    |
+        +-----------------------+
+        | time_courant_crit     |
+        +-----------------------+
+        | flow_turns            |
+        +-----------------------+
+        | flow_turn_sign        |
+        +-----------------------+
 
         Time in Flow Class: (Fraction of Total Time)
+
         +-----+--------+----------+----------+----------+---------+-----------+
         | 0   | 1      | 2        | 3        | 4        | 5       | 6         |
         +-----+--------+----------+----------+----------+---------+-----------+
@@ -931,27 +998,27 @@ class Pump(Link):
         Pump Stats. The stats returned are rolling/cumulative.
         Indeces are as follows:
 
-        +--------------------------+
-        | Fraction of Time Pump On |
-        +--------------------------+
-        | Min Flow Rate            |
-        +--------------------------+
-        | Average Flow Rate        |
-        +--------------------------+
-        | Max Flow Rate            |
-        +--------------------------+
-        | Total Volume Pumped      |
-        +--------------------------+
-        | Energy Consumed          |
-        +--------------------------+
-        | Off Curve Low            |
-        +--------------------------+
-        | Off Curve High           |
-        +--------------------------+
-        | Total Periods            |
-        +--------------------------+
-        | Number of Start Ups      |
-        +--------------------------+
+        +------------------+
+        | percent_utilized |
+        +------------------+
+        | min_flowrate     |
+        +------------------+
+        | average_flowrate |
+        +------------------+
+        | max_flowrate     |
+        +------------------+
+        | total_volume     |
+        +------------------+
+        | energy_consumed  |
+        +------------------+
+        | off_curve_low    |
+        +------------------+
+        | off_curve_high   |
+        +------------------+
+        | number_startups  |
+        +------------------+
+        | total_periods    |
+        +------------------+
 
         :return: Group of Stats
         :rtype: dict

@@ -19,12 +19,12 @@ class SystemStats(object):
 
     Examples:
 
-    >>> from pyswmm import Simulation, SystemFlowRouting
+    >>> from pyswmm import Simulation, SystemStats
     >>>
-    >>> with Simulation('../test/TestModel1_weirSetting.inp') as sim:
+    >>> with Simulation('tests/data/TestModel1_weirSetting.inp') as sim:
     ...     system_routing = SystemStats(sim)
     ...
-    ...     for step in simulation:
+    ...     for step in sim:
     ...         print system_routing.routing_stats
     ...         print system_routing.runoff_stats
     """
@@ -41,27 +41,33 @@ class SystemStats(object):
         """
         Get rolling/cumulative routing stats. Follow Data are returned:
 
-        +-------------------------+
-        | DWF Inflow Volume       |
-        +-------------------------+
-        | WWF Inflow Volume       |
-        +-------------------------+
-        | GW Inflow Volume        |
-        +-------------------------+
-        | I&I Inflow Volume       |
-        +-------------------------+
-        | External Inflow Volume  |
-        +-------------------------+
-        | Flooding Volume         |
-        +-------------------------+
-        | Outflow Volume          |
-        +-------------------------+
-        | Evaporation Loss Volume |
-        +-------------------------+
-        | Seepage Loss Volume     |
-        +-------------------------+
-        | Routing Error (%)       |
-        +-------------------------+
+        +--------------------+
+        | dry_weather_inflow |
+        +--------------------+
+        | wet_weather_inflow |
+        +--------------------+
+        | groundwater_inflow |
+        +--------------------+
+        | II_inflow          |
+        +--------------------+
+        | external_inflow    |
+        +--------------------+
+        | flooding           |
+        +--------------------+
+        | outflow            |
+        +--------------------+
+        | evaporation_loss   |
+        +--------------------+
+        | seepage_loss       |
+        +--------------------+
+        | reacted            |
+        +--------------------+
+        | initial_storage    |
+        +--------------------+
+        | final_storage      |
+        +--------------------+
+        | routing_error      |
+        +--------------------+
 
         :return: Statistics
         :rtype: dict
@@ -73,27 +79,31 @@ class SystemStats(object):
         """
         Get rolling/cumulative runoff stats. Follow Data are returned:
 
-        +-----------------------+
-        | Total Precipitation   |
-        +-----------------------+
-        | Evaporation Volume    |
-        +-----------------------+
-        | Infiltration Volume   |
-        +-----------------------+
-        | Runoff Volume         |
-        +-----------------------+
-        | Runon Volume          |
-        +-----------------------+
-        | Drain Volume          |
-        +-----------------------+
-        | Snow Removed Volume   |
-        +-----------------------+
-        | Initial Stored Volume |
-        +-----------------------+
-        | Initial Snow Volume   |
-        +-----------------------+
-        | Runoff Routing Error  |
-        +-----------------------+
+        +------------------+
+        | rainfall         |
+        +------------------+
+        | evaporation      |
+        +------------------+
+        | infiltration     |
+        +------------------+
+        | runoff           |
+        +------------------+
+        | drains           |
+        +------------------+
+        | runon            |
+        +------------------+
+        | init_storage     |
+        +------------------+
+        | final_storage    |
+        +------------------+
+        | init_snow_cover  |
+        +------------------+
+        | final_snow_cover |
+        +------------------+
+        | snow_removed     |
+        +------------------+
+        | routing_error    |
+        +------------------+
 
         :return: Statistics
         :rtype: dict
